@@ -86,7 +86,7 @@ Publishing is a commit on `main` and a pull request against
 listing pins a commit, so fixing the code and leaving the listing is the one failure that reaches nobody but the
 installer: **bumping `engines` means opening the listing pull request in the same sitting.**
 
-The bundle inlines `@intentic/sandbox-contract` (and zod with it), since the host publishes only `vue`,
-`@tanstack/vue-query`, `@intentic/extension-api`, `@intentic/extension-manifest` and `@intentic/extension-ui` to an
-installed bundle. Narrowing the routes this extension reads to a `wire.ts` of its own, the way `intentic/extension-logs`
+The bundle inlines `@intentic/sandbox-contract` and `@intentic/extension-manifest` (and zod with them), since the host
+publishes only `vue`, `@tanstack/vue-query`, `@intentic/extension-api` and `@intentic/extension-ui` to an installed
+bundle. Narrowing the routes this extension reads to a `wire.ts` of its own, the way `intentic/extension-logs`
 did, is the follow-up that makes it a version boundary rather than a coincidence.

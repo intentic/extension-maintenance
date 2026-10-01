@@ -8,7 +8,7 @@ export default defineConfig({
         outDir: "dist",
         lib: { entry: "src/index.ts", formats: ["es"], fileName: () => "extension.js" },
         rollupOptions: {
-            external: ["vue", "@tanstack/vue-query", "@intentic/extension-api", "@intentic/extension-manifest", "@intentic/extension-ui"],
+            external: ["vue", "@tanstack/vue-query", "@intentic/extension-api", "@intentic/extension-ui"],
             output: { inlineDynamicImports: true },
         },
     },
