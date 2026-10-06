@@ -125,12 +125,8 @@ const groups = computed(() =>
         return [
             {
                 kind: spec.kind,
-                label: spec.label,
-                caption: spec.caption,
                 // Answered rows sink via a stable sort, not a filter; the book's order survives within each half.
                 rows: [...kindRows].sort((a, b) => Number(choreAnswered(a)) - Number(choreAnswered(b))),
-                // Counts what is outstanding, not the row count: matters once 'Everything' shows the whole group.
-                due: kindRows.filter((verdict) => outstanding(verdict)).length,
             },
         ];
     }),
@@ -247,15 +243,9 @@ const onStart = (verdict: ChoreVerdict, pick: AgentRunChoice | undefined): void 
                     <Button size="small" severity="secondary" text label="Show everything" @click="filter = `all`" />
                 </div>
 
-                <!-- One group per kind, in the book's own order; each heading carries its own argument from CHORE_KINDS. -->
+                <!-- One surface per kind, in the book's own order; kind names stay off the page — the rows speak for themselves. -->
                 <template v-else>
-                    <RowGroup
-                        v-for="group in groups"
-                        :key="group.kind"
-                        :label="group.label"
-                        :count="group.due === 0 ? undefined : group.due"
-                        :caption="group.caption"
-                    >
+                    <RowGroup v-for="group in groups" :key="group.kind">
                         <ChoreRow
                             v-for="verdict in group.rows"
                             :key="rowKey(verdict)"
