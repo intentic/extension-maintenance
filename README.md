@@ -35,7 +35,10 @@ because both the daemon and the browser must agree on what a chore is. This pack
 across repos, rather than one tile per repository fragmenting one list into five. Under the shell's project
 scope the list narrows to the open project's repositories (`api.workspace.inProject`, since the report comes
 from the chores routes rather than `repos()`), and the shared `ProjectChip` says how many it hid; the rail
-badge stays workspace-wide so a chore owed elsewhere is never missed.
+badge stays workspace-wide so a chore owed elsewhere is never missed. Narrowing further, to one repository, is the
+shared `RepoPicker` in the page header (`?repo=` in the URL, remembered across visits), the same control every
+repo-scoped view wears, each repository's due count beside its name; a directory tab is already bound to its
+repository and shows no picker.
 
 It activates on ANY repository and deliberately not on evidence of a problem: gating the AREA on something being
 due would mean the first time an owner sees this surface is the first time it has bad news.
@@ -57,7 +60,7 @@ which cost the column a silent seat on every workspace.
 - A row says whether anyone has already answered it, not just what the evidence found. A turn that concluded
   against a row's exact evidence (`choreAnswer`, digest-checked) puts a `reported` / `acted` mark on the collapsed
   row; while that answer stands the row loses its warning tint, sorts under the rows nobody has looked at, and is
-  left out of every count on the page — the tab badge, the group headings, the rail column, which is finally the
+  left out of every count on the page — the tab badge, the group headings, the repository picker, which is finally the
   same definition the tile badge has always used. Demoted, never hidden: it keeps its place, its evidence and its
   verbs, and the button that starts a second turn says "Run it again". A chore whose cadence has lapsed still
   shows what was concluded last time but goes back to full weight, because the lapse is the book asking again.

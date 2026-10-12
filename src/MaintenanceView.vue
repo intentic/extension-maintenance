@@ -6,9 +6,9 @@ import {
     Notice,
     noticeOf,
     PageAction,
-    RepoRail,
-    type RepoRailAll,
-    type RepoRailGroup,
+    type PickerOption,
+    RepoPicker,
+    type RepoPickerAll,
     RowGroup,
     SegmentedControl,
     SplitView,
@@ -58,11 +58,14 @@ const rowKey = (verdict: ChoreVerdict): string => `${verdict.repo}|${verdict.cho
 // A month: long enough to skip a cycle, short enough not to outlive its own reason.
 const SNOOZE_MS = 30 * 86_400_000;
 
-// Rail shows the due count; whether any is being carried is the row's colour, not a second number illegible at this
-// width. The split is spelled out in the tooltip.
-const railTone = (carrying: number): string => (carrying > 0 ? `text-warning` : ``);
-const railNote = (due: number, carrying: number): string =>
-    carrying === 0 ? `${due} due` : `${due} due · ${carrying} a risk being carried right now`;
+// The picker's quiet count per repository: what is due, and how much of it is a risk being carried right now. Nothing
+// due prints nothing, so the repositories that need a visit stand out in the list.
+const dueNote = (due: number, carrying: number): string | undefined => {
+    if (due === 0) {
+        return undefined;
+    }
+    return carrying === 0 ? `${due} due` : `${due} due · ${carrying} at risk`;
+};
 
 // Single source every count on this page derives from: a due chore whose answer still stands (`choreAnswered`) is not
 // outstanding, matching `unseenVerdicts`.
@@ -76,30 +79,22 @@ const counts = computed(() =>
     })),
 );
 
-// One unlabelled group: a heading over the rail's only group would name a distinction that isn't made.
-const railGroups = computed<RepoRailGroup[]>(() => [
-    {
-        key: `repos`,
-        rows: counts.value.map((entry) => ({
-            value: entry.repo,
-            label: repoName(entry.repo),
-            icon: `folder`,
-            meta: String(entry.due),
-            tone: railTone(entry.carrying),
-            tooltip: railNote(entry.due, entry.carrying),
-        })),
-    },
-]);
+const repoOptions = computed<PickerOption[]>(() =>
+    counts.value.map((entry) => ({
+        value: entry.repo,
+        label: repoName(entry.repo),
+        icon: `folder`,
+        description: dueNote(entry.due, entry.carrying),
+        // A path reads as a machine name; "workspace root" is words.
+        mono: repoName(entry.repo) === entry.repo,
+    })),
+);
 
-const railAll = computed<RepoRailAll>(() => {
+const everyRepo = computed<RepoPickerAll>(() => {
     const due = counts.value.reduce((sum, entry) => sum + entry.due, 0);
     const carrying = counts.value.reduce((sum, entry) => sum + entry.carrying, 0);
-    return { icon: `wrench`, meta: String(due), tone: railTone(carrying), tooltip: railNote(due, carrying) };
+    return { icon: `wrench`, description: dueNote(due, carrying) ?? `nothing due` };
 });
-
-// True when the view chooses scope, not the host. Not 'more than one repo': that's unknown until the report lands, and
-// would shift the layout after render.
-const railed = computed(() => pinned === undefined);
 
 const scoped = computed(() => (repo.value === undefined ? byRepo.value : byRepo.value.filter((group) => group.repo === repo.value)));
 
@@ -198,6 +193,8 @@ const onStart = (verdict: ChoreVerdict, pick: AgentRunChoice | undefined): void 
         <template #actions>
             <!-- The open project, and the way out of it: the same scope every other area narrows by. -->
             <ProjectChip :project="api.workspace.project()" :hidden="projectHidden" noun="repositories" @clear="api.workspace.setProject(undefined)" />
+            <!-- Absent when the host bound the view to one repository: there is nothing left to narrow. -->
+            <RepoPicker v-if="pinned === undefined" v-model="repo" :repos="repoOptions" :all="everyRepo" memory="maintenance.repo" />
             <SegmentedControl
                 v-model="filter"
                 size="xs"
@@ -221,10 +218,6 @@ const onStart = (verdict: ChoreVerdict, pick: AgentRunChoice | undefined): void 
         <template v-if="notice || error" #strips>
             <Notice v-if="notice" tone="warning">{{ notice }}</Notice>
             <Notice v-if="error" :of="noticeOf(error)" />
-        </template>
-
-        <template v-if="railed" #rail>
-            <RepoRail v-model="repo" :groups="railGroups" :all="railAll" memory="maintenance.repo" />
         </template>
 
         <template #detail>
