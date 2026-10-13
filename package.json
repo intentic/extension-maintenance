@@ -15,7 +15,7 @@
     "dependencies": {
         "@intentic/base": "^1.281.0",
         "@intentic/extension-api": "^1.281.0",
-        "@intentic/extension-ui": "^1.281.0",
+        "@intentic/extension-ui": "^1.333.1",
         "@intentic/sandbox-contract": "^1.281.0"
     },
     "devDependencies": {
