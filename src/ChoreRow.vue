@@ -337,7 +337,7 @@ watch(
                 <p v-if="evidenceNote" class="mt-3 max-w-read text-2xs leading-relaxed text-subtle">{{ evidenceNote }}</p>
 
                 <!-- Actions follow a rule after the bounded evidence area. -->
-                <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-line/60 pt-3">
+                <div class="mt-3.5 flex flex-wrap items-center gap-2 border-t border-line/60 pt-3.5">
                     <!-- Hidden on a clear or unmeasured chore: spending money to prove nothing wrong is not this surface's job. -->
                     <AgentRunButton
                         v-if="verdict.prompt !== undefined && verdict.state !== `clear`"
