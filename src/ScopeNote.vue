@@ -70,7 +70,7 @@ const blocks = computed(() =>
     <div v-if="summary !== ``" class="border-t border-line/60 pt-3">
         <button type="button" :class="ui.textAction(`text-2xs text-subtle`)" :aria-expanded="open" @click="open = !open">
             <Icon :name="open ? `chevron-down` : `chevron-right`" class="text-2xs" />
-            <span>{{ summary }}</span>
+            {{ summary }}
         </button>
 
         <!-- Cause on the left, cost on the right; separate blocks so a reader can tell which of the three answers applies. -->
