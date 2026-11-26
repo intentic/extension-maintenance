@@ -226,54 +226,52 @@ const onStart = (verdict: ChoreVerdict, pick: AgentRunChoice | undefined): void 
             <Notice v-if="error" :of="noticeOf(error)" />
         </template>
 
+        <!-- The skeleton and the book take turns as the body's one element; the scroller and shrink-to-fit are SplitView's. -->
         <template #detail>
-            <!-- Gap stays; the scroller and shrink-to-fit belong to SplitView, not this wrapper. -->
-            <div class="flex flex-col gap-6">
-                <!-- Also covers the window before the sandbox handshake unblocks the fetch. -->
-                <MaintenanceSkeleton v-if="isPending" :imprint="imprint" />
+            <!-- Also covers the window before the sandbox handshake unblocks the fetch. -->
+            <MaintenanceSkeleton v-if="isPending" :imprint="imprint" />
 
-                <!-- One element in the skeleton's place, so its imprint (drawn by MaintenanceSkeleton) is the book as it last
-                     stood: its empty note or every kind's rows, and the footnote under them. -->
-                <div v-else v-skeleton-source="filter === `attention` ? imprint : undefined" class="flex flex-col gap-6">
-                    <!-- The empty state this design most wants reachable; states what was checked rather than congratulating. -->
-                    <div v-if="groups.length === 0" class="flex flex-col items-start gap-2 py-10">
-                        <p class="text-sm text-content">Nothing needs attention.</p>
-                        <p class="max-w-read-sm text-xs text-subtle">
-                            Every chore in the book is either clear or waiting on a measurement. Switch to Everything to see what was checked, when,
-                            and what could not be measured at all.
-                        </p>
-                        <Button size="small" severity="secondary" text label="Show everything" @click="filter = `all`" />
-                    </div>
-
-                    <!-- One surface per kind, in the book's own order; kind names stay off the page — the rows speak for themselves. -->
-                    <template v-else>
-                        <RowGroup v-for="group in groups" :key="group.kind">
-                            <ChoreRow
-                                v-for="verdict in group.rows"
-                                :key="rowKey(verdict)"
-                                :verdict="verdict"
-                                :run="latestByChore.get(rowKey(verdict))"
-                                :measuring="measuring"
-                                :expanded="expanded === rowKey(verdict)"
-                                :show-repo="showRepo"
-                                :busy="busy"
-                                @toggle="expanded = expanded === rowKey(verdict) ? undefined : rowKey(verdict)"
-                                @start="(pick) => onStart(verdict, pick)"
-                                @remeasure="onRemeasure(verdict)"
-                                @snooze="void attempt(`snooze that chore`, () => snooze(verdict, Date.now() + SNOOZE_MS))"
-                                @unsnooze="void attempt(`un-snooze that chore`, () => snooze(verdict, 0))"
-                                @open="(conversationId) => api.chat.openSession(conversationId)"
-                            />
-                        </RowGroup>
-                    </template>
-
-                    <!-- The omitted-record note qualifies the visible maintenance list. -->
-                    <ScopeNote
-                        v-if="only"
-                        :probes="only.probes"
-                        :inapplicable="only.verdicts.filter((verdict) => verdict.state === `not-applicable`)"
-                    />
+            <!-- One element in the skeleton's place, so its imprint (drawn by MaintenanceSkeleton) is the book as it last
+                 stood: its empty note or every kind's rows, and the footnote under them. -->
+            <div v-else v-skeleton-source="filter === `attention` ? imprint : undefined" class="flex flex-col gap-6">
+                <!-- The empty state this design most wants reachable; states what was checked rather than congratulating. -->
+                <div v-if="groups.length === 0" class="flex flex-col items-start gap-2 py-10">
+                    <p class="text-sm text-content">Nothing needs attention.</p>
+                    <p class="max-w-read-sm text-xs text-subtle">
+                        Every chore in the book is either clear or waiting on a measurement. Switch to Everything to see what was checked, when,
+                        and what could not be measured at all.
+                    </p>
+                    <Button size="small" severity="secondary" text label="Show everything" @click="filter = `all`" />
                 </div>
+
+                <!-- One surface per kind, in the book's own order; kind names stay off the page — the rows speak for themselves. -->
+                <template v-else>
+                    <RowGroup v-for="group in groups" :key="group.kind">
+                        <ChoreRow
+                            v-for="verdict in group.rows"
+                            :key="rowKey(verdict)"
+                            :verdict="verdict"
+                            :run="latestByChore.get(rowKey(verdict))"
+                            :measuring="measuring"
+                            :expanded="expanded === rowKey(verdict)"
+                            :show-repo="showRepo"
+                            :busy="busy"
+                            @toggle="expanded = expanded === rowKey(verdict) ? undefined : rowKey(verdict)"
+                            @start="(pick) => onStart(verdict, pick)"
+                            @remeasure="onRemeasure(verdict)"
+                            @snooze="void attempt(`snooze that chore`, () => snooze(verdict, Date.now() + SNOOZE_MS))"
+                            @unsnooze="void attempt(`un-snooze that chore`, () => snooze(verdict, 0))"
+                            @open="(conversationId) => api.chat.openSession(conversationId)"
+                        />
+                    </RowGroup>
+                </template>
+
+                <!-- The omitted-record note qualifies the visible maintenance list. -->
+                <ScopeNote
+                    v-if="only"
+                    :probes="only.probes"
+                    :inapplicable="only.verdicts.filter((verdict) => verdict.state === `not-applicable`)"
+                />
             </div>
         </template>
     </SplitView>
