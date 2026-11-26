@@ -1,5 +1,6 @@
 import type { HostQuery } from "@intentic/extension-api";
-import { type ChoresReport, ChoresReportSchema, WorkspaceChildrenSchema } from "@intentic/sandbox-contract";
+import { WorkspaceChildrenSchema } from "@intentic/sandbox-contract";
+import { type ChoresReport, ChoresReportSchema } from "./chores";
 import { host } from "./host";
 import { parseManifest, parseResult, resultPath, type RunManifest, type RunResult, RUNS_DIR, SCAN_RUNS } from "./runs";
 
@@ -7,7 +8,8 @@ import { parseManifest, parseResult, resultPath, type RunManifest, type RunResul
 // share one fetch. The chore report is what all three want; the runs list is slower (a directory walk plus two file
 // reads per run) and purely historical, worth warming ahead of a click.
 
-const reportFn = async (): Promise<ChoresReport> => ChoresReportSchema.parse(await host().sandbox.json(`/chores`));
+// From this extension's own backend (src/server), which the daemon served as GET /chores until 2026-11-26.
+const reportFn = async (): Promise<ChoresReport> => ChoresReportSchema.parse(await host().backend.json(`/report`));
 
 // Key's first segment matches the manifest's `contributes.files` invalidation for .intentic/records/chores/, reaching
 // all three readers at once.

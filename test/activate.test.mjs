@@ -32,7 +32,9 @@ const hostStub = () => {
     const commands = [];
     const refuse = (kind) => () => assert.fail(`${kind} registered, which this manifest never declares`);
     const api = {
-        apiVersion: `2.14.0`,
+        apiVersion: `2.52.0`,
+        // The extension's own backend (src/server): the report, a re-measure, a ledger write.
+        backend: inert(),
         views: {
             register: (view) => {
                 assert.ok(declaredViews.has(view.id), `view "${view.id}" is not declared in contributes.views`);

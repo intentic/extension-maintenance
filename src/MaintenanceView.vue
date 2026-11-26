@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { errorMessage } from "@intentic/base/errors";
-import { CHORE_KINDS, CHORES, choreAnswered, type ChoreVerdict, repoName } from "@intentic/sandbox-contract/chores";
+import { CHORE_KINDS, CHORES, choreAnswered, type ChoreVerdict, repoName } from "./chores";
 import {
     Button,
     Notice,

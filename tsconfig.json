@@ -32,6 +32,7 @@
         "src/**/*.ts",
         "src/**/*.vue",
         "intentic-extension.json",
-        "vite.config.ts"
+        "vite.config.ts",
+        "vite.server.config.ts"
     ]
 }

@@ -1,4 +1,4 @@
-import { assessReport, type ChoreVerdict, ledgerKey, unseenVerdicts } from "@intentic/sandbox-contract/chores";
+import { assessReport, type ChoreVerdict, ledgerKey, unseenVerdicts } from "./chores";
 import type { ViewBadge } from "@intentic/extension-api";
 import { sandboxLedger, sandboxPoll } from "@intentic/extension-api";
 import { STATE_DIR } from "@intentic/sandbox-contract";

@@ -7,16 +7,18 @@
     "type": "module",
     "packageManager": "pnpm@12.10.1",
     "scripts": {
-        "build": "vite build",
+        "build": "vite build && vite build --config vite.server.config.ts",
         "typecheck": "vue-tsc --noEmit -p tsconfig.json",
         "test": "vitest run && node --test test/*.test.mjs",
         "verify": "pnpm run build && pnpm run typecheck && pnpm run test"
     },
     "dependencies": {
-        "@intentic/base": "^1.281.0",
-        "@intentic/extension-api": "^1.281.0",
+        "@intentic/base": "^1.431.0",
+        "@intentic/extension-api": "^1.431.0",
         "@intentic/extension-ui": "^1.333.1",
-        "@intentic/sandbox-contract": "^1.281.0"
+        "@intentic/sandbox-contract": "^1.281.0",
+        "yaml": "^2.9.1",
+        "zod": "^4.5.4"
     },
     "devDependencies": {
         "@intentic/extension-manifest": "^1.281.0",

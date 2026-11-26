@@ -1,14 +1,14 @@
-import { assessReport, type ChoreVerdict, CHORES } from "@intentic/sandbox-contract/chores";
-import type { ProbeId } from "@intentic/sandbox-contract";
+import { assessReport, type ChoreVerdict, CHORES } from "./chores";
+import type { ProbeId } from "./chores";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, ref, watch } from "vue";
 import { choresReportQuery } from "./choresQuery";
 import { host } from "./host";
 
-// One request (`GET /chores`) carries every repository's cached probes and ledger; verdicts are computed here in the
-// browser, not the daemon, so the rail badge and this panel share one computation and cannot disagree:
-// the daemon measures: it has a filesystem, a shell, a resident index
-// the browser decides: it ships with the product and can be updated
+// One request (the backend's `GET /report`) carries every repository's cached probes and ledger; verdicts are computed
+// here in the browser, not the backend, so the rail badge and this panel share one computation and cannot disagree:
+// the backend measures: it has the filesystem and the sandbox's workload classes
+// the browser decides: it ships with the book (./chores) and the panel that reads it
 
 const POLL_MS = 5 * 60_000;
 // Poll rate while a probe is in flight; only runs while the reader watches a spinner they asked for.
@@ -34,7 +34,7 @@ export function useChores() {
     // Matches the manifest's `contributes.files` invalidation, so a fresh probe reaches the panel unpolled.
     const reportKey = computed(() => api.sandbox.key(`maintenance-report`));
 
-    // Unconfirmed clicks from this panel, shown before the daemon confirms; cleared only by reconciliation.
+    // Unconfirmed clicks from this panel, shown before the backend confirms; cleared only by reconciliation.
     const asked = ref(new Map<string, number>());
 
     const query = useQuery({
@@ -46,8 +46,8 @@ export function useChores() {
         queryFn: () => choresReportQuery().queryFn(),
     });
 
-    // Daemon's list (truth, but a request late) plus this panel's unconfirmed clicks (instant, but a wish). A click
-    // shows immediately, the daemon's answer takes over, and an unconfirmed one expires rather than spinning forever.
+    // The backend's list (truth, but a request late) plus this panel's unconfirmed clicks (instant, but a wish). A click
+    // shows immediately, the backend's answer takes over, and an unconfirmed one expires rather than spinning forever.
     const measuring = computed<MeasuringProbe[]>(() => {
         const live = query.data.value?.running ?? [];
         const known = new Set(live.map((entry) => probeKey(entry.repo, entry.id)));
@@ -58,7 +58,7 @@ export function useChores() {
         return [...live, ...unconfirmed];
     });
 
-    // Drops a click once the daemon has taken it over, the probe re-ran, or no ack arrived in time. A read-time prune,
+    // Drops a click once the backend has taken it over, the probe re-ran, or no ack arrived in time. A read-time prune,
     // not a watcher, which would answer a tick late.
     const settle = (): void => {
         const report = query.data.value;
@@ -81,7 +81,7 @@ export function useChores() {
     // overnight would be wrong.
     const verdicts = computed<ChoreVerdict[]>(() => (query.data.value === undefined ? [] : assessReport(query.data.value, Date.now())));
 
-    // Repo to its verdicts, in CHORES' reading order; repos stay in `GET /chores`'s own discovery order (workspace root
+    // Repo to its verdicts, in CHORES' reading order; repos stay in the report's own discovery order (workspace root
     // first).
     const byRepo = computed(() =>
         (query.data.value?.repos ?? []).map(({ repo }) => ({
@@ -97,7 +97,7 @@ export function useChores() {
         const key = probeKey(repo, id);
         asked.value = new Map([...asked.value, [key, Date.now()]]);
         try {
-            await api.sandbox.json(`/chores/probe`, {
+            await api.backend.json(`/probe`, {
                 method: `POST`,
                 headers: { "content-type": `application/json` },
                 body: JSON.stringify({ repo, id }),
@@ -113,7 +113,7 @@ export function useChores() {
     // Snoozes a chore, or un-snoozes it (a past date); written as a ledger row, where the chore's current truth already
     // lives.
     const snooze = async (verdict: ChoreVerdict, until: number): Promise<void> => {
-        await api.sandbox.json(`/chores/ledger`, {
+        await api.backend.json(`/ledger`, {
             method: `POST`,
             headers: { "content-type": `application/json` },
             body: JSON.stringify({

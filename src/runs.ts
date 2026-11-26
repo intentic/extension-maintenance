@@ -1,4 +1,4 @@
-import type { ChoreOutcome } from "@intentic/sandbox-contract";
+import type { ChoreOutcome } from "./chores";
 import {
     type BatchRunKind,
     batchConversationId,

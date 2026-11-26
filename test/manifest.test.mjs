@@ -52,3 +52,38 @@ test(`the agent contribution is a Claude Code plugin`, async (t) => {
     }
     await access(here(`${plugin}/.claude-plugin/plugin.json`), constants.R_OK);
 });
+
+/* The code chores' templates moved here from the sandbox's own catalogue (2026-11-26): every chore this extension's book
+   (src/chores) schedules has one, filed as a chore and offered one-click, on the book's own schedule. The prompt text is
+   not compared here; scripts/chore-templates.mjs rewrites them from the book. */
+test(`every chore the book schedules has a template, as a one-click chore on the book's schedule`, async () => {
+    const { CHORES } = await import(`../src/chores/index.ts`);
+    const templates = new Map((manifest.contributes?.automationTemplates ?? []).map((template) => [template.id, template]));
+    for (const chore of CHORES.filter((entry) => entry.automation !== undefined)) {
+        const template = templates.get(chore.id);
+        assert.ok(template !== undefined, `${chore.id} has no template`);
+        assert.deepEqual(template.trigger, { kind: `schedule`, cron: chore.automation.cron });
+        assert.equal(template.chore, true);
+        assert.equal(template.offer, `create`);
+    }
+});
+
+/* The two the book cannot measure: an agent's diff after its turn, and the fleet's own session history. */
+test(`the hand-written chores wake on a settled turn and on a session count, not on a guard`, () => {
+    const byId = new Map((manifest.contributes?.automationTemplates ?? []).map((template) => [template.id, template]));
+    assert.deepEqual(byId.get(`review-agent-work`)?.trigger, { kind: `workspace`, event: `turn.settled` });
+    assert.deepEqual(byId.get(`dreaming-session`)?.trigger, { kind: `schedule`, cron: `0 5 * * *`, afterSessions: 30 });
+    assert.equal(byId.get(`dreaming-session`)?.guard, undefined);
+    for (const template of byId.values()) {
+        assert.equal(template.chore, true, `${template.id} is filed as a chore`);
+    }
+});
+
+/* (2026-11-26) The job this extension starts runs for, declared here since the sandbox's own table stopped listing it, under
+   the id that table gave it: the owner's stored choice of setup names it, so it never changes. */
+test(`declares its model role under the id a stored choice names`, () => {
+    assert.deepEqual(
+        manifest.contributes?.modelRoles?.map((role) => [role.id, role.setup]),
+        [[`maintenance-chore`, `medium`]],
+    );
+});

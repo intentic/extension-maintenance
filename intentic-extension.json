@@ -6,14 +6,12 @@
     "category": "work",
     "icon": "wrench",
     "engines": {
-        "intentic": "^2.0.0"
+        "intentic": "^2.52.0"
     },
     "entry": "dist/extension.js",
+    "server": "dist/server.js",
     "permissions": {
         "sandbox": [
-            "GET /chores",
-            "POST /chores/probe",
-            "POST /chores/ledger",
             "GET /workspace/children",
             "GET /workspace/file",
             "POST /workspace/upload",
@@ -21,9 +19,23 @@
             "POST /agent",
             "POST /agent/stop",
             "GET /agents"
+        ],
+        "daemon": [
+            "GET /workspace/repos",
+            "GET /workspace/search"
+        ],
+        "events": [
+            "activity"
+        ],
+        "exec": [
+            "command",
+            "toolchain"
         ]
     },
     "contributes": {
+        "modelRoles": [
+            { "id": "maintenance-chore", "label": "Maintenance chores", "explanation": "A chore run started from the Maintenance board.", "icon": "wrench", "setup": "medium" }
+        ],
         "views": [
             {
                 "id": "maintenance",
@@ -44,6 +56,83 @@
                     "maintenance-report",
                     "maintenance-runs"
                 ]
+            }
+        ],
+        "automationTemplates": [
+            {
+                "id": "review-agent-work",
+                "title": "Review agent work",
+                "icon": "eye",
+                "trigger": {
+                    "kind": "workspace",
+                    "event": "turn.settled"
+                },
+                "description": "After every isolated agent turn, read its diff and report what it got wrong, before you decide to land it.",
+                "guard": "printf '%s' \"$AUTOMATION_PAYLOAD\" | jq -r '.repos[] | \"\\(.dir) \\(.from)\"' | while read -r dir from; do git -C \"$dir\" diff --numstat \"$from\"; done | awk '{ n += $1 + $2 } END { exit !(n >= 20) }'",
+                "prompt": "An agent just finished a turn. $AUTOMATION_PAYLOAD is a JSON object describing what changed. For each entry in its `repos`, `git -C <dir> diff <from>` is exactly that repo's change, committed and uncommitted both. Look at nothing else: the rest of the workspace is not what this run is about.\n\nReview that diff. Report findings that would change what someone does next: correctness bugs, unhandled edge cases, behaviour that contradicts this repo's own conventions, and tests that should exist for this change but don't. Cite file:line for each one and keep it to what you can point at. If the change is fine, say so in one line: do not manufacture findings to look useful.",
+                "note": "skips changes under 20 lines",
+                "offer": "create",
+                "chore": true
+            },
+            {
+                "id": "dreaming-session",
+                "title": "Dreaming session",
+                "icon": "moon",
+                "trigger": {
+                    "kind": "schedule",
+                    "cron": "0 5 * * *",
+                    "afterSessions": 30
+                },
+                "description": "Look back over the sessions this sandbox has run, and change one thing about how the next ones will go.",
+                "prompt": "Dream about how this sandbox works, and change one thing about it.\n\nUnder this brief is the list of sessions somebody has run here since you last did this: id, title, when, how many turns each took, what it cost. `agents show <id> --transcript --last 40` reads any of them back and `agents find '<text>'` finds the ones that said a particular thing. Read enough of them to see a PATTERN rather than an anecdote: what this sandbox is actually asked for, where the same ground is covered from cold every time, and where the owner has had to correct the same thing more than once.\n\nThen pick ONE improvement, the most substantial one available, in one of these four areas:\n- ROLES. A category of job that keeps coming back deserves a card that starts it with the right context, the right accounts and the right corner of the workspace, instead of the whole toolbox and a cold read. Create one, sharpen one, or delete one no session has needed (.intentic/config/roles.json, and the Roles page draws it).\n- A CAPABILITY TO ASK FOR. Something you kept working around because this sandbox is not connected to it: a service, an account, one of the owner's own machines. Raise it with the `capabilities` skill, so it arrives as a card they can approve, and say which sessions it would have changed.\n- THE IMAGE. A tool that would have made the searching, reading or artifact-making in those sessions materially cheaper, proposed as a Dockerfile step through the `environment` skill. Installing it at runtime is not the answer: it does not survive, which is exactly why this is one of the four.\n- A MISTAKE THAT KEEPS HAPPENING. Where the record shows the same correction being typed again, the fix is a mechanism rather than a resolution: a check in the repository's own .intentic/checks.json, a skill, or a line in the workspace's own AGENTS.md that would have prevented it.\n\nThe sessions woke you; they did not decide anything. A count is not a pattern, and one bad afternoon is not a standing problem: quote what you actually read. If they genuinely show nothing worth changing, say so in one line and stop, inventing an improvement to look useful costs more than the turn that found nothing.\n\nDo the one thing you chose, in full, and nothing else: this lands as a single diff for someone who did not watch you work, and a night that rewrote five files about four ideas is one nobody can review. Where the change is an ASK rather than an edit, raise it through the skill that owns it instead of describing it in your summary. Finish with a short note: what the sessions showed, in numbers; what you changed or asked for; and what you considered and rejected, so the next one of these does not spend its night re-proposing it.",
+                "note": "nightly · wakes once 30 new sessions have run",
+                "offer": "create",
+                "chore": true
+            },
+            {
+                "id": "security-advisories",
+                "title": "Patch security advisories",
+                "icon": "shield",
+                "trigger": {
+                    "kind": "schedule",
+                    "cron": "0 4 * * *"
+                },
+                "description": "Published advisories against this dependency tree, and the ones whose fix is a version bump.",
+                "guard": "{ pnpm audit --json 2>/dev/null; sed -n '/^packages:/,/^[^[:space:]#-]/p' pnpm-workspace.yaml 2>/dev/null | tr -d \"\\\"'\" | sed -n -e 's|/\\*\\*[[:space:]]*$||' -e 's|^[[:space:]]*-[[:space:]]*!\\([^[:space:]#]*\\).*$|\\1|p' | while IFS= read -r dir; do [ -f \"$dir/package.json\" ] || continue; printf '{\"standalone\":\"%s\"}\\n' \"$dir\"; scratch=$(mktemp -d) || continue; for file in package.json pnpm-lock.yaml package-lock.json .npmrc; do [ -f \"$dir/$file\" ] && cp \"$dir/$file\" \"$scratch/\"; done; ( cd \"$scratch\" && { [ -f pnpm-lock.yaml ] || { [ -f package-lock.json ] && pnpm import >/dev/null 2>&1; } || pnpm install --lockfile-only --ignore-workspace --ignore-scripts >/dev/null 2>&1; } && pnpm audit --json --ignore-workspace 2>/dev/null ); rm -rf \"$scratch\"; done; true; } > /tmp/intentic-chore-audit.json; [ \"$(jq -s '[.[] | .metadata.vulnerabilities? // empty | (.high // 0) + (.critical // 0)] | add // 0' /tmp/intentic-chore-audit.json 2>/dev/null || echo 0)\" -gt 0 ]",
+                "prompt": "Patch security advisories across this workspace.\n\nWhy: pnpm audit's report for this workspace is in /tmp/intentic-chore-audit.json, a stream of JSON documents (read it with `jq -s`): pnpm's own report first, then for each package the workspace leaves out a `{\"standalone\": dir}` line and that package's report. It woke you because it carries a high or critical advisory. The measurement woke you; it did not decide anything. Read the repository before you touch it, and treat every finding as a claim to verify rather than a task to execute. If a finding is wrong, say why in one line and leave it. A run that verifies ten and fixes two is a good run. An advisory with a published fix is a version bump someone has to actually make; one without is a risk to decide about.\n\nFor each advisory, establish whether this workspace reaches the vulnerable code path at all: a transitive dependency of a build-time tool is a different problem from one in a running service. Where the fix is a version bump the lockfile can absorb, make it. Where it needs a real upgrade or has no patch published, leave it and say what it would take. Never rewrite application code to route around a CVE. An advisory named \"in <folder>\" is in a package the pnpm workspace leaves out and installs on its own: bump it in that folder's package.json, and check it by auditing a scratch copy of the folder (`pnpm install --lockfile-only --ignore-workspace`, then `pnpm audit --ignore-workspace`), never by leaving a lockfile in it.\n\nKeep it mechanical and separately explainable: nothing lands that you could not justify on its own line of the summary. Do not reformat, rename or \"while I was in here\" anything the finding did not name. Before you finish, run the type-check and tests of what you changed (its package, the test files that cover it), not the whole repository's; if you cannot make them pass, leave the change out and say so. Done when `pnpm audit`, and the scratch-copy audit of any folder you touched, reports fewer high/critical advisories than it did, and the type-check and tests of what it changed pass.",
+                "note": "nightly · high + critical only",
+                "offer": "create",
+                "chore": true
+            },
+            {
+                "id": "dead-code",
+                "title": "Clear out dead code",
+                "icon": "trash",
+                "trigger": {
+                    "kind": "schedule",
+                    "cron": "0 3 * * *"
+                },
+                "description": "Files, exports and dependencies nothing in this repository references any more.",
+                "guard": "pnpm exec knip --version >/dev/null 2>&1 || { echo \"knip is not a devDependency of this repo\"; exit 1; }; pnpm exec knip --reporter json > /tmp/intentic-chore-knip.json && { echo \"no dead code\"; exit 1; }",
+                "prompt": "Clear out dead code across this workspace.\n\nWhy: knip's findings for this workspace are in /tmp/intentic-chore-knip.json (JSON), and it woke you because there are some. The measurement woke you; it did not decide anything. Read the repository before you touch it, and treat every finding as a claim to verify rather than a task to execute. If a finding is wrong, say why in one line and leave it. A run that verifies ten and fixes two is a good run. Code nothing reaches still has to be read, type-checked and kept compiling by everyone who works nearby.\n\nRe-run knip yourself first: this measurement is hours old and the tree has moved. Then check each finding against how the file is actually used: knip is confidently wrong about anything reachable from OUTSIDE the repository, which means a package's public entry points, files a bundler or framework loads by convention, and types consumed only by a downstream package. Delete what is genuinely unreachable. Leave the false positives and list them in one line each, so the next run's reader knows they were considered rather than missed.\n\nKeep it mechanical and separately explainable: nothing lands that you could not justify on its own line of the summary. Do not reformat, rename or \"while I was in here\" anything the finding did not name. Before you finish, run the type-check and tests of what you changed (its package, the test files that cover it), not the whole repository's; if you cannot make them pass, leave the change out and say so. Done when knip reports fewer findings, the type-check and tests of what it changed pass, and nothing you deleted is reachable from another package.",
+                "note": "nightly · wakes only on findings",
+                "offer": "create",
+                "chore": true
+            },
+            {
+                "id": "duplication",
+                "title": "Find duplication worth collapsing",
+                "icon": "clone",
+                "trigger": {
+                    "kind": "schedule",
+                    "cron": "0 3 * * 1"
+                },
+                "description": "Copy-paste that has grown past a fifth of a percent of the tree. Reports only, extracting is a design call.",
+                "guard": "pnpm dlx jscpd ${INTENTIC_WORKSPACE_ROOT_EXCLUDE:+--ignore=${INTENTIC_WORKSPACE_ROOT_EXCLUDE}/**} --reporters json --output /tmp/intentic-chore-jscpd --min-lines 12 --threshold 100 . >/dev/null 2>&1; [ \"$(jq '.statistics.total.percentage // 0 | floor' /tmp/intentic-chore-jscpd/jscpd-report.json 2>/dev/null || echo 0)\" -ge 5 ]",
+                "prompt": "Find duplication worth collapsing across this workspace.\n\nWhy: jscpd's clone report for this workspace is in /tmp/intentic-chore-jscpd/jscpd-report.json, and it woke you because duplication is above 5%. The measurement woke you; it did not decide anything. Read the repository before you touch it, and treat every finding as a claim to verify rather than a task to execute. If a finding is wrong, say why in one line and leave it. A run that verifies ten and fixes two is a good run. Duplication only costs anything when the copies have to change together, and only some of it does.\n\nReport the clones where the copies genuinely have to change together. For each: cite both file:line ranges, say what the shared concept actually is, and name where the extraction would live. Then say explicitly which of the reported clones you are NOT recommending against: generated files, deliberately repetitive tests, and lookalikes owned by different subsystems, so the next reader knows the list was triaged rather than truncated.\n\nChange nothing. This is a survey: the output is your findings, cited file:line, and a recommendation the owner can act on or dismiss. Where you would propose an edit, describe it and where it would go instead of making it. Done when every clone in the report has either a named extraction or a one-line reason it should stay.",
+                "note": "weekly · wakes above 5% duplication",
+                "offer": "create",
+                "chore": true
             }
         ]
     }

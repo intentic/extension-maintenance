@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { type ChoreVerdict, probeSpec } from "@intentic/sandbox-contract/chores";
+import { type ChoreVerdict, probeSpec } from "./chores";
 import { Icon, ui } from "@intentic/extension-ui";
-import type { ProbeResult } from "@intentic/sandbox-contract";
+import type { ProbeResult } from "./chores";
 import { computed, ref } from "vue";
 
 // What this repository was not asked, as a footnote read after the list rather than a banner before it; renders only

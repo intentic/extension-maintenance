@@ -1,4 +1,4 @@
-import type { ChoreVerdict } from "@intentic/sandbox-contract/chores";
+import type { ChoreVerdict } from "./chores";
 import { type AgentSummary, AgentsListSchema, runPickOf, StartedTurnSchema } from "@intentic/sandbox-contract";
 import type { AgentRunChoice } from "@intentic/extension-ui";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
@@ -75,7 +75,7 @@ export function useRuns() {
         }
         await Promise.all(
             pending.map(async (run) =>
-                api.sandbox.json(`/chores/ledger`, {
+                api.backend.json(`/ledger`, {
                     method: `POST`,
                     headers: { "content-type": `application/json` },
                     body: JSON.stringify({

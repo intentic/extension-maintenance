@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { choreAnswer, choreAnswered, type ChoreVerdict, probeSpec, repoName } from "@intentic/sandbox-contract/chores";
+import { choreAnswer, choreAnswered, type ChoreVerdict, probeSpec, repoName } from "./chores";
 import {
     AgentRunButton,
     type AgentRunChoice,
