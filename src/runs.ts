@@ -90,3 +90,26 @@ export const reportingClause = (runId: string): string =>
             `checked and the findings did not hold up: a tool was wrong, or the situation is deliberate. "clean" is a good outcome and the ` +
             `most useful one you can give when it is true: it is what stops this chore being raised again over the same evidence.`,
     });
+
+// What a finished run needs for promotion: its manifest, and whether it has ended with a result.
+export interface PromotableRun {
+    readonly manifest: RunManifest;
+    readonly result: RunResult | undefined;
+    readonly running: boolean;
+}
+
+// The runs to write into the ledger, from runs newest first and each chore's row as the ledger holds it now
+// (`repo|chore` to its `ranAt`, undefined for a chore with no row yet; a chore missing from it is not one the backend
+// would take). Only the newest finished run per chore, and only when newer than its row: the ledger keeps ONE row per
+// chore, so promoting every run it did not name had two finished runs of one chore overwrite each other on every
+// report, twice a second per open tab, and the chore flicker between due and clear (2026-11-26).
+export const promotable = <Run extends PromotableRun>(runs: readonly Run[], ledger: ReadonlyMap<string, number | undefined>): Run[] => {
+    const newest = new Map<string, Run>();
+    for (const run of runs) {
+        const key = `${run.manifest.repo}|${run.manifest.chore}`;
+        if (run.result !== undefined && !run.running && !newest.has(key)) {
+            newest.set(key, run);
+        }
+    }
+    return [...newest].flatMap(([key, run]) => (ledger.has(key) && run.manifest.createdAt > (ledger.get(key) ?? -Infinity) ? [run] : []));
+};

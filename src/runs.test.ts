@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { ANY_RUN_PREFIX, conversationIdOf, parseManifest, parseResult, reportingClause, resultPath, runIdAt, summarySpans } from "./runs";
+import { ANY_RUN_PREFIX, conversationIdOf, parseManifest, parseResult, promotable, reportingClause, resultPath, runIdAt, summarySpans } from "./runs";
 
 describe(`run identity`, () => {
     test(`a run's conversation id is derived from its run id and carries the fleet prefix`, () => {
@@ -90,5 +90,38 @@ describe(`what we ask the agent to write back`, () => {
         }
         expect(clause).toContain(`clean`);
         expect(clause).toContain(resultPath(`r1`));
+    });
+});
+
+describe(`promotable`, () => {
+    const run = (runId: string, createdAt: number, extra: { chore?: string; running?: boolean; result?: boolean } = {}) => ({
+        manifest: { runId, createdAt, repo: `intentic`, chore: extra.chore ?? `deprecated-apis`, digest: `d`, conversationId: conversationIdOf(runId), headline: `` },
+        result: extra.result === false ? undefined : { outcome: `reported` as const, summary: `` },
+        running: extra.running ?? false,
+    });
+    const older = run(`old`, 1_000);
+    const newer = run(`new`, 2_000);
+    // Newest first, as the runs query hands them over.
+    const runs = [newer, older];
+
+    test(`two finished runs of one chore settle on the newest instead of overwriting each other forever`, () => {
+        // The ledger holding the older run: the newer one is written.
+        expect(promotable(runs, new Map([[`intentic|deprecated-apis`, 1_000]]))).toEqual([newer]);
+        // The ledger holding the newer run: the older one is NOT written back, which was the flicker's loop.
+        expect(promotable(runs, new Map([[`intentic|deprecated-apis`, 2_000]]))).toEqual([]);
+    });
+
+    test(`a chore with no row yet takes its newest finished run`, () => {
+        expect(promotable(runs, new Map([[`intentic|deprecated-apis`, undefined]]))).toEqual([newer]);
+    });
+
+    test(`a run still going or without a result leaves the newest finished one to stand for its chore`, () => {
+        const going = run(`going`, 3_000, { running: true });
+        const silent = run(`silent`, 2_500, { result: false });
+        expect(promotable([going, silent, ...runs], new Map([[`intentic|deprecated-apis`, 1_000]]))).toEqual([newer]);
+    });
+
+    test(`a chore the report does not know is left alone, so an unknown repo is not posted on every report`, () => {
+        expect(promotable(runs, new Map())).toEqual([]);
     });
 });

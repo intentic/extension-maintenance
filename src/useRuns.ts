@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed } from "vue";
 import { choresRunsQuery } from "./choresQuery";
 import { host } from "./host";
-import { ANY_RUN_PREFIX, conversationIdOf, reportingClause, type RunManifest, type RunResult, runIdAt, runManifestPath } from "./runs";
+import { ANY_RUN_PREFIX, conversationIdOf, promotable, reportingClause, type RunManifest, type RunResult, runIdAt, runManifestPath } from "./runs";
 
 // Chore runs are isolated fleet agents (`POST /agent`, isolated: true), so this extension owns no session machinery;
 // the worktree, status, cost and transcript already exist. Isolation here is a safety measure: an acting chore edits
@@ -66,10 +66,10 @@ export function useRuns() {
         return latest;
     });
 
-    // Turns a finished run into a ledger row; idempotent by run id, one comparison per run. The agent only writes a
-    // file, so promotion works from a closed browser too; `ranAt` is the run's creation time, not now.
-    const promote = async (ledgerRunIds: ReadonlySet<string>): Promise<void> => {
-        const pending = runs.value.filter((run) => run.result !== undefined && !run.running && !ledgerRunIds.has(run.manifest.runId));
+    // Turns each chore's newest finished run into its ledger row (`promotable` says which, and why only those). The agent
+    // only writes a file, so promotion works from a closed browser too; `ranAt` is the run's creation time, not now.
+    const promote = async (ledger: ReadonlyMap<string, number | undefined>): Promise<void> => {
+        const pending = promotable(runs.value, ledger);
         if (pending.length === 0) {
             return;
         }

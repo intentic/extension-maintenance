@@ -150,15 +150,15 @@ watch(
     { immediate: true },
 );
 
-// Workspace-wide on purpose: a finished run is a ledger fact regardless of what's currently in view.
-const ledgerRunIds = computed(
-    () =>
-        new Set(byRepo.value.flatMap((group) => group.verdicts).flatMap((verdict) => (verdict.lastRun === undefined ? [] : [verdict.lastRun.runId]))),
+// Workspace-wide on purpose (every repository, not only the open project's): a finished run is a ledger fact regardless
+// of what's currently in view. Each chore's row as the ledger holds it, which `promote` only ever moves forward.
+const ledgerRows = computed(
+    () => new Map(allByRepo.value.flatMap((group) => group.verdicts).map((verdict) => [rowKey(verdict), verdict.lastRun?.ranAt] as const)),
 );
 watch(
-    [latestByChore, ledgerRunIds],
+    [latestByChore, ledgerRows],
     () => {
-        void promote(ledgerRunIds.value);
+        void promote(ledgerRows.value);
     },
     { immediate: true },
 );
